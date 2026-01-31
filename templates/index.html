@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex flex-column align-items-center justify-content-center min-vh-100 kitchen-bg text-center">
+    <!-- Piggy Animation -->
+    <div class="piggy-container mb-5 bounce">
+        <div class="piggy-face bg-white rounded-circle shadow border border-3 border-danger d-flex align-items-center justify-content-center" style="width: 150px; height: 150px; font-size: 80px;">
+            🐷
+        </div>
+        <!-- Eyes blinking animation could be added here -->
+    </div>
+
+    <h1 class="display-4 fw-bold mb-3" style="color: #5D4037;">Piggy Chef</h1>
+    <p class="lead mb-5" style="color: #795548;">Your AI Study Companion</p>
+
+    <button id="start-btn" class="btn btn-secondary btn-lg px-5 py-3 shadow-lg fade-in">
+        Tap to Start
+    </button>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Initialize Offline Samples
+        const offlineSamples = {
+            courses: [
+                {id: 1, name: "Data Structures", icon: "🥟", outline: "Trees, Graphs, Lists..."},
+                {id: 2, name: "Algorithms", icon: "🍜", outline: "Sorting, Searching..."}
+            ],
+            user: { username: "demo_user", thinking_type: "divergent" }
+        };
+        
+        if (!localStorage.getItem('offline_samples')) {
+            localStorage.setItem('offline_samples', JSON.stringify(offlineSamples));
+            console.log("Offline samples initialized.");
+        }
+
+        const startBtn = document.getElementById('start-btn');
+        startBtn.addEventListener('click', () => {
+            // Button Click Animation (Scale down)
+            startBtn.style.transform = "scale(0.9)";
+            setTimeout(() => {
+                startBtn.style.transform = "scale(1)";
+                // Check Auth
+                fetch('/api/check_auth/')
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.is_authenticated) {
+                            window.location.href = '/start/';
+                        } else {
+                            window.location.href = '/login/';
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Network error, checking offline mode");
+                        // Fallback for offline (Screen 9 or Login)
+                        // If offline and no session, go to offline page or login
+                         window.location.href = '/login/';
+                    });
+            }, 150);
+        });
+    });
+</script>
+{% endblock %}

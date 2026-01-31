@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex flex-column align-items-center justify-content-center min-vh-100 kitchen-bg text-center">
+    <h2 class="mb-4" style="color: #5D4037;">Step 1: Upload Ingredients</h2>
+    
+    <!-- Pot Animation -->
+    <div class="position-relative mb-5" style="width: 200px; height: 200px;">
+        <div class="piggy-face bg-white rounded-circle shadow border border-3 border-secondary position-absolute top-0 start-50 translate-middle-x" style="width: 100px; height: 100px; z-index: 2; font-size: 50px; display:flex; align-items:center; justify-content:center;">
+            🐷
+        </div>
+        <div class="pot bg-secondary rounded-bottom shadow position-absolute bottom-0 w-100" style="height: 120px; z-index: 1;"></div>
+        <div id="steam" class="position-absolute top-0 start-50 translate-middle-x" style="opacity: 0; transition: opacity 1s;">
+            💨 💨 💨
+        </div>
+    </div>
+
+    <input type="file" id="file-input" class="d-none" accept=".pdf,.docx,.txt">
+    <button id="upload-btn" class="btn btn-primary btn-lg px-5 py-3 shadow-lg">
+        Upload Course Outline
+    </button>
+    <p class="mt-3 text-muted">Supports PDF, Word, TXT</p>
+</div>
+
+<script>
+    const uploadBtn = document.getElementById('upload-btn');
+    const fileInput = document.getElementById('file-input');
+    const steam = document.getElementById('steam');
+
+    uploadBtn.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', async () => {
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Animation
+            steam.style.opacity = 1;
+            uploadBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Cooking...';
+            uploadBtn.disabled = true;
+
+            try {
+                const res = await fetch('/api/upload_course/', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await res.json();
+                
+                if (result.status === 'success') {
+                    setTimeout(() => {
+                        window.location.href = '/select/';
+                    }, 1500);
+                } else {
+                    alert("Upload failed: " + result.message);
+                    uploadBtn.innerHTML = 'Upload Course Outline';
+                    uploadBtn.disabled = false;
+                    steam.style.opacity = 0;
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Network Error");
+                uploadBtn.innerHTML = 'Upload Course Outline';
+                uploadBtn.disabled = false;
+            }
+        }
+    });
+</script>
+{% endblock %}

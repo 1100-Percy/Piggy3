@@ -1,0 +1,30 @@
+{
+  "type": "object",
+  "properties": {
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "label": { "type": "string" },
+          "shape": { "type": "string" },
+          "color": { "type": "string" }
+        },
+        "required": ["id", "label"]
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "from": { "type": "integer" },
+          "to": { "type": "integer" }
+        },
+        "required": ["from", "to"]
+      }
+    }
+  },
+  "required": ["nodes", "edges"]
+}

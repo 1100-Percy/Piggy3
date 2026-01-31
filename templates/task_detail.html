@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex flex-column align-items-center justify-content-center min-vh-100 kitchen-bg text-center p-4">
+    <!-- Course Icon -->
+    <div class="rounded-circle bg-white shadow mb-4 d-flex align-items-center justify-content-center" style="width: 100px; height: 100px; font-size: 50px;">
+        <span id="course-icon">🥟</span>
+    </div>
+    
+    <h3 class="mb-2" id="course-name">Course Name</h3>
+    <div class="card shadow-lg border-0 rounded-4 p-4 w-100 mb-5" style="max-width: 500px; background: rgba(255,255,255,0.95);">
+        <h5 class="text-muted mb-3">Cooking Instructions</h5>
+        <h2 class="fw-bold mb-4" id="task-content">Task Content...</h2>
+        
+        <!-- Steps (Mock) -->
+        <div class="text-start mb-4">
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="step1">
+                <label class="form-check-label" for="step1">Read the concept definition</label>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="step2">
+                <label class="form-check-label" for="step2">Identify key relationships</label>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="step3">
+                <label class="form-check-label" for="step3">Summarize in one sentence</label>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-3">
+        <button id="skip-btn" class="btn btn-secondary px-4 py-2">Skip for Now</button>
+        <button id="finish-btn" class="btn btn-primary px-5 py-2 shadow">Dish Completed!</button>
+    </div>
+</div>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const taskId = urlParams.get('id');
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        if (!taskId) {
+            window.location.href = '/key_info/';
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/get_task_details/?id=${taskId}`);
+            const data = await res.json();
+            
+            if (data.status === 'success') {
+                const task = data.task;
+                document.getElementById('task-content').textContent = task.content;
+                document.getElementById('course-name').textContent = task.course_name;
+                // document.getElementById('course-icon').textContent = task.course_icon; // If we had icon mapping
+            } else {
+                alert("Error: " + data.message);
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    });
+
+    document.getElementById('finish-btn').addEventListener('click', async () => {
+        // Animation
+        const btn = document.getElementById('finish-btn');
+        btn.innerHTML = 'Serving...';
+        
+        try {
+            const res = await fetch('/api/complete_task/', {
+                method: 'POST',
+                body: JSON.stringify({task_id: taskId, status: 'completed'}),
+                headers: {'Content-Type': 'application/json'}
+            });
+            const result = await res.json();
+            
+            if (result.status === 'success') {
+                if (result.all_done) {
+                    window.location.href = '/results/';
+                } else {
+                    window.location.href = '/key_info/';
+                }
+            } else {
+                alert("Error");
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    });
+
+    document.getElementById('skip-btn').addEventListener('click', () => {
+        window.location.href = '/key_info/';
+    });
+</script>
+{% endblock %}

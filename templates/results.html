@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex flex-column align-items-center justify-content-center min-vh-100 kitchen-bg text-center">
+    <!-- Confetti / Falling Carrots (CSS Animation could go here) -->
+    
+    <div class="piggy-face bg-white rounded-circle shadow mb-4 d-flex align-items-center justify-content-center border border-3 border-danger bounce" style="width: 150px; height: 150px; font-size: 80px;">
+        🐷
+    </div>
+    
+    <h2 class="display-4 fw-bold mb-3" style="color: #D32F2F;">Yummy! Great Job!</h2>
+    
+    <div class="card p-4 shadow-lg border-0 rounded-4 mb-5" style="background: rgba(255,255,255,0.9);">
+        <h4 class="text-muted">Today's Harvest</h4>
+        <div class="d-flex align-items-center justify-content-center gap-2 mt-3">
+            <span style="font-size: 40px;">🥕</span>
+            <span class="display-3 fw-bold text-warning" id="carrot-count">0</span>
+        </div>
+        <p class="text-muted mt-2">Total Carrots: <span id="total-carrots">0</span></p>
+    </div>
+
+    <div class="d-flex gap-3">
+        <a href="/key_info/" class="btn btn-secondary px-4 py-2 shadow">Review Today</a>
+        <a href="/start/" class="btn btn-primary px-4 py-2 shadow">Continue Tomorrow</a>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const res = await fetch('/api/get_results/');
+            const data = await res.json();
+            
+            if (data.status === 'success') {
+                document.getElementById('carrot-count').textContent = data.carrots;
+                document.getElementById('total-carrots').textContent = data.total_carrots;
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    });
+</script>
+{% endblock %}

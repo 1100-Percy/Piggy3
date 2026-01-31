@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex flex-column align-items-center justify-content-center min-vh-100 kitchen-bg text-center">
+    <div class="piggy-face bg-white rounded-circle shadow mb-4 d-flex align-items-center justify-content-center border border-2 border-warning" style="width: 120px; height: 120px; font-size: 60px;">
+        🐷
+    </div>
+    
+    <h2 class="mb-5" style="color: #5D4037;">How many dishes today?</h2>
+
+    <!-- Slider -->
+    <div class="w-100 px-5 mb-5" style="max-width: 500px;">
+        <label for="taskRange" class="form-label fw-bold mb-3" id="task-label">3 Tasks (Balanced Meal)</label>
+        <input type="range" class="form-range" min="1" max="5" step="1" id="taskRange" value="3" style="height: 30px;">
+        <div class="d-flex justify-content-between text-muted small mt-2">
+            <span>Snack (1)</span>
+            <span>Feast (5)</span>
+        </div>
+    </div>
+
+    <button id="cook-btn" class="btn btn-primary btn-lg px-5 py-3 shadow-lg rounded-pill">
+        Start Cooking
+    </button>
+</div>
+
+<script>
+    const range = document.getElementById('taskRange');
+    const label = document.getElementById('task-label');
+    const btn = document.getElementById('cook-btn');
+
+    const labels = {
+        1: "1 Task (Light Snack)",
+        2: "2 Tasks (Appetizer)",
+        3: "3 Tasks (Balanced Meal)",
+        4: "4 Tasks (Hearty Dinner)",
+        5: "5 Tasks (Full Banquet)"
+    };
+
+    range.addEventListener('input', () => {
+        label.textContent = labels[range.value];
+        // Piggy nod logic could go here
+    });
+
+    btn.addEventListener('click', async () => {
+        const count = range.value;
+        
+        // Animation
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Chopping...';
+        btn.disabled = true;
+
+        try {
+            const res = await fetch('/api/generate_tasks/', {
+                method: 'POST',
+                body: JSON.stringify({count: count}),
+                headers: {'Content-Type': 'application/json'}
+            });
+            const result = await res.json();
+            
+            if (result.status === 'success') {
+                // Store graph_id/task_ids in sessionStorage if needed, or backend handles context
+                setTimeout(() => {
+                    window.location.href = '/key_info/';
+                }, 1000);
+            } else {
+                alert("Error: " + result.message);
+                btn.innerHTML = 'Start Cooking';
+                btn.disabled = false;
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Network Error");
+            btn.innerHTML = 'Start Cooking';
+            btn.disabled = false;
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex flex-column align-items-center justify-content-center min-vh-100 kitchen-bg p-4">
+    <!-- Header -->
+    <div class="d-flex align-items-center mb-5 gap-3">
+        <div class="piggy-face bg-white rounded-circle shadow d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; font-size: 40px;">
+            🐷
+        </div>
+        <div>
+            <h2 class="fw-bold mb-0" id="username">Chef</h2>
+            <p class="text-muted mb-0">Total Carrots: <span id="carrots" class="text-warning fw-bold">0</span> 🥕</p>
+        </div>
+    </div>
+
+    <!-- Menu Grid -->
+    <div class="row w-100" style="max-width: 600px;">
+        <div class="col-6 mb-3">
+            <div class="card shadow-sm border-0 p-3 h-100 text-center rounded-4" style="background: rgba(255,255,255,0.8);">
+                <span class="fs-1">📚</span>
+                <h5 class="mt-2">My Courses</h5>
+            </div>
+        </div>
+        <div class="col-6 mb-3">
+            <div class="card shadow-sm border-0 p-3 h-100 text-center rounded-4" style="background: rgba(255,255,255,0.8);">
+                <span class="fs-1">⚙️</span>
+                <h5 class="mt-2">Settings</h5>
+            </div>
+        </div>
+        <div class="col-6 mb-3">
+            <div class="card shadow-sm border-0 p-3 h-100 text-center rounded-4" style="background: rgba(255,255,255,0.8);">
+                <span class="fs-1">🏆</span>
+                <h5 class="mt-2">Achievements</h5>
+            </div>
+        </div>
+        <div class="col-6 mb-3">
+            <div class="card shadow-sm border-0 p-3 h-100 text-center rounded-4" style="background: rgba(255,255,255,0.8); cursor: pointer;" id="logout-btn">
+                <span class="fs-1">🚪</span>
+                <h5 class="mt-2 text-danger">Logout</h5>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const res = await fetch('/api/check_auth/');
+            const data = await res.json();
+            if (data.is_authenticated) {
+                document.getElementById('username').textContent = data.username;
+                // Fetch stats if needed, or update check_auth to return carrots
+            } else {
+                window.location.href = '/login/';
+            }
+        } catch (err) { console.error(err); }
+    });
+
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+        await fetch('/api/logout/');
+        window.location.href = '/login/';
+    });
+</script>
+{% endblock %}

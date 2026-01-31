@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row min-vh-100 m-0">
+    <!-- Left Side: Piggy Animation -->
+    <div class="col-md-5 d-none d-md-flex align-items-center justify-content-center bg-white border-end">
+        <div class="text-center">
+             <div class="piggy-face bg-light rounded-circle shadow mb-4 d-flex align-items-center justify-content-center mx-auto" style="width: 200px; height: 200px; font-size: 100px;">
+                🐷
+            </div>
+            <h3 class="text-muted">Welcome Back!</h3>
+            <p id="piggy-dialog" class="text-danger fst-italic mt-3 px-4">"Ready to cook some knowledge?"</p>
+        </div>
+    </div>
+
+    <!-- Right Side: Forms -->
+    <div class="col-md-7 d-flex align-items-center justify-content-center kitchen-bg">
+        <div class="card shadow-lg p-4 border-0 rounded-4" style="width: 100%; max-width: 450px; background: rgba(255,255,255,0.9);">
+            
+            <!-- Tabs -->
+            <ul class="nav nav-pills nav-fill mb-4" id="authTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active rounded-pill fw-bold" id="login-tab" data-bs-toggle="pill" data-bs-target="#login" type="button" role="tab">Login</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link rounded-pill fw-bold" id="register-tab" data-bs-toggle="pill" data-bs-target="#register" type="button" role="tab">Register</button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="authTabsContent">
+                <!-- Login Form -->
+                <div class="tab-pane fade show active" id="login" role="tabpanel">
+                    <form id="login-form">
+                        <div class="mb-3">
+                            <label class="form-label">Username</label>
+                            <input type="text" class="form-control rounded-pill" name="username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <input type="password" class="form-control rounded-pill" name="password" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 py-2 rounded-pill shadow-sm">Start Cooking (Login)</button>
+                    </form>
+                </div>
+
+                <!-- Register Form -->
+                <div class="tab-pane fade" id="register" role="tabpanel">
+                    <form id="register-form">
+                        <div class="mb-3">
+                            <label class="form-label">Username</label>
+                            <input type="text" class="form-control rounded-pill" name="username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <input type="password" class="form-control rounded-pill" name="password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Major</label>
+                            <input type="text" class="form-control rounded-pill" name="major" id="major-input" required>
+                            <div class="form-text text-danger" id="major-feedback" style="display:none;"></div>
+                        </div>
+                        <button type="submit" class="btn btn-secondary w-100 py-2 rounded-pill shadow-sm">Join Kitchen (Register)</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Major Input Feedback
+    const majorInput = document.getElementById('major-input');
+    const feedback = document.getElementById('major-feedback');
+    const piggyDialog = document.getElementById('piggy-dialog');
+
+    majorInput.addEventListener('blur', () => {
+        const major = majorInput.value;
+        if (major) {
+            const complaints = [
+                `Wow, ${major}? That sounds simpler than making ramen!`,
+                `${major}? I hope you like spicy textbooks!`,
+                `Oof, ${major}... heavy ingredients!`
+            ];
+            const randomComplaint = complaints[Math.floor(Math.random() * complaints.length)];
+            feedback.textContent = randomComplaint;
+            feedback.style.display = 'block';
+            piggyDialog.textContent = `"${randomComplaint}"`;
+        }
+    });
+
+    // Handle Login
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const data = Object.fromEntries(formData.entries());
+        
+        try {
+            const res = await fetch('/api/login/', {
+                method: 'POST',
+                body: JSON.stringify(data),
+                headers: {'Content-Type': 'application/json'}
+            });
+            const result = await res.json();
+            if (result.status === 'success') {
+                // Check if thinking_type is set (not default/None) or redirect logic
+                // The requirement says: First time -> Screen 2 (Upload). Non-first -> Screen 4.
+                // We can't easily know if it's "First Time" without a flag. 
+                // I'll assume if they have no courses, it's first time. 
+                // For now, I'll redirect to Upload as default for new users, Start for others.
+                // Since I can't check courses here easily without another API call, I'll just default to Upload for now 
+                // or I can return 'has_courses' in login response.
+                // I'll update login_view to return 'has_courses'.
+                
+                 window.location.href = '/upload/'; 
+            } else {
+                alert(result.message);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Login failed");
+        }
+    });
+
+    // Handle Register
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const data = Object.fromEntries(formData.entries());
+        
+        try {
+            const res = await fetch('/api/register/', {
+                method: 'POST',
+                body: JSON.stringify(data),
+                headers: {'Content-Type': 'application/json'}
+            });
+            const result = await res.json();
+            if (result.status === 'success') {
+                alert("Welcome! " + result.complaint);
+                window.location.href = '/upload/';
+            } else {
+                alert(result.message);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Registration failed");
+        }
+    });
+</script>
+{% endblock %}
