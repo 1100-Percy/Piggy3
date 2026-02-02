@@ -8,6 +8,7 @@ from pypdf import PdfReader
 from docx import Document as DocxDocument
 import io
 import datetime
+from .ai_service import extract_course_structure, generate_smart_tasks, find_cross_connections
 
 @csrf_exempt
 def upload_course_view(request):
@@ -44,9 +45,11 @@ def upload_course_view(request):
             
             student = Student.objects.get(username=request.user.username)
             
+            # Store text for AI analysis (limit to 50k chars for potential future needs)
+            # BUT: AI extraction will use stored outline_text
             course = Course(
                 name=file_name.split('.')[0],
-                outline_text=text_content[:5000],
+                outline_text=text_content[:5000], # Keep initial storage small as requested
                 owner=student,
                 icon="dumpling"
             )
@@ -92,11 +95,94 @@ def generate_tasks_view(request):
             if not course:
                 return JsonResponse({'status': 'error', 'message': 'No course found'})
             
-            # Generate Tasks
+            # 1. AI Analysis (Structure Extraction)
+            print(f"Generating tasks for course: {course.name}")
+            ai_data = extract_course_structure(course.outline_text, student.thinking_type)
+            print(f"AI Data Received: {bool(ai_data)}")
+            
+            nodes = []
+            edges = []
+            tasks_content = []
+            
+            if ai_data:
+                # Use AI Data
+                print("Processing AI Data...")
+                raw_nodes = ai_data.get('nodes', [])
+                raw_edges = ai_data.get('edges', [])
+                concepts = ai_data.get('concepts', [])
+                
+                # Ensure all IDs are strings to prevent Vis.js mismatch
+                for n in raw_nodes:
+                    n['id'] = str(n.get('id', ''))
+                    nodes.append(n)
+                
+                for e in raw_edges:
+                    e['from'] = str(e.get('from', ''))
+                    e['to'] = str(e.get('to', ''))
+                    edges.append(e)
+                
+                # Update Course with concepts
+                course.extracted_concepts = concepts
+                course.save()
+                
+                # 2. Cross-Course Connections
+                # Use mongoengine syntax correctly
+                other_courses = Course.objects.filter(owner=student, id__ne=course.id)
+                others_data = [{'name': c.name, 'concepts': c.extracted_concepts} for c in other_courses if c.extracted_concepts]
+                
+                if others_data:
+                    cross_links = find_cross_connections(course.name, concepts, others_data)
+                    
+                    # Add cross-links to graph
+                    for link in cross_links:
+                        # Create a special node for the external concept
+                        ext_node_id = f"ext_{link['to_course']}_{link['to_concept']}"
+                        nodes.append({
+                            'id': ext_node_id,
+                            'label': f"{link['to_concept']} ({link['to_course']})",
+                            'shape': 'diamond', # Different shape for external
+                            'color': '#81D4FA', # Blue for external
+                            'title': f"From course: {link['to_course']}\nReason: {link.get('reason', '')}"
+                        })
+                        
+                        # Find local node to connect to (fuzzy match)
+                        local_node_id = None
+                        for n in nodes:
+                            if n['label'].lower() in link['from_concept'].lower() or link['from_concept'].lower() in n['label'].lower():
+                                local_node_id = n['id']
+                                break
+                        
+                        if local_node_id:
+                            edges.append({
+                                'from': local_node_id,
+                                'to': ext_node_id,
+                                'dashes': True, # Dashed line for cross-link
+                                'label': 'Related',
+                                'title': link.get('reason', 'Cross-course connection')
+                            })
+
+                # 3. AI Task Generation
+                ai_tasks = generate_smart_tasks(course.name, nodes, count)
+                if ai_tasks and 'tasks' in ai_tasks:
+                    tasks_content = ai_tasks['tasks']
+            
+            # Fallback if AI fails or returns empty
+            if not tasks_content:
+                tasks_content = [f"Cook {course.name} - Step {i+1}" for i in range(count)]
+            
+            if not nodes:
+                nodes = [
+                    {'id': '1', 'label': course.name, 'shape': 'box', 'color': '#FFD54F'},
+                    {'id': '2', 'label': 'Preparation', 'shape': 'dot', 'color': '#FFAB91'},
+                    {'id': '3', 'label': 'Core Ingredients', 'shape': 'dot', 'color': '#FFAB91'},
+                ]
+                edges = [{'from': '1', 'to': '2'}, {'from': '1', 'to': '3'}]
+
+            # Save Tasks
             tasks_data = []
-            for i in range(count):
+            for i, content in enumerate(tasks_content):
                 task = Task(
-                    content=f"Analyze {course.name} - Step {i+1}",
+                    content=content,
                     course=course,
                     owner=student,
                     status="pending"
@@ -104,17 +190,7 @@ def generate_tasks_view(request):
                 task.save()
                 tasks_data.append(str(task.id))
                 
-            # Generate Graph (Mock)
-            nodes = [
-                {'id': 1, 'label': course.name, 'shape': 'box', 'color': '#FFD54F'},
-                {'id': 2, 'label': 'Concept A', 'shape': 'dot', 'color': '#FFAB91'},
-                {'id': 3, 'label': 'Concept B', 'shape': 'dot', 'color': '#FFAB91'},
-            ]
-            edges = [
-                {'from': 1, 'to': 2},
-                {'from': 1, 'to': 3},
-            ]
-            
+            # Save Graph
             graph = Graph(
                 course=course,
                 nodes=nodes,
@@ -125,6 +201,8 @@ def generate_tasks_view(request):
             
             return JsonResponse({'status': 'success', 'graph_id': str(graph.id), 'task_ids': tasks_data})
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             return JsonResponse({'status': 'error', 'message': str(e)})
     return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
 
@@ -231,7 +309,7 @@ def get_dashboard_data_view(request):
     if not course:
          return JsonResponse({'status': 'error', 'message': 'No course'})
          
-    graph = Graph.objects.filter(course=course).order_by('-id').first()
+    graph = Graph.objects.filter(course=course).order_by('-created_at').first()
     # Flexible date filter or just take latest batch
     tasks = Task.objects.filter(course=course).order_by('-date')[:5] # Simple fetch latest 5 for demo
     
@@ -239,6 +317,7 @@ def get_dashboard_data_view(request):
     
     return JsonResponse({
         'status': 'success',
+        'thinking_type': student.thinking_type,
         'graph': {
             'nodes': graph.nodes if graph else [],
             'edges': graph.edges if graph else []

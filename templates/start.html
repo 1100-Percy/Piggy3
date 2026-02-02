@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="d-flex flex-column align-items-center justify-content-center min-vh-100 kitchen-bg text-center">
+<div id="start-container" class="d-flex flex-column align-items-center justify-content-center min-vh-100 text-center position-relative" style="overflow: hidden;">
     <div class="piggy-face bg-white shadow mb-4 d-flex align-items-center justify-content-center border border-2 border-warning rounded" style="width: 120px; height: 120px;">
-        <img src="/static/image/lulu1.GIF" class="custom-piggy-img" alt="Piggy Chef">
+        <img src="/static/image/lulu2.gif" class="custom-piggy-img" alt="Piggy Chef">
     </div>
     
     <h2 class="mb-5" style="color: #5D4037;">How many dishes today?</h2>
@@ -11,7 +11,7 @@
     <!-- Slider -->
     <div class="w-100 px-5 mb-5" style="max-width: 500px;">
         <label for="taskRange" class="form-label fw-bold mb-3" id="task-label">3 Tasks (Balanced Meal)</label>
-        <input type="range" class="form-range" min="1" max="5" step="1" id="taskRange" value="3" style="height: 30px;">
+        <input type="range" class="form-range custom-range" min="1" max="5" step="0.01" id="taskRange" value="3" style="height: 30px;">
         <div class="d-flex justify-content-between text-muted small mt-2">
             <span>Snack (1)</span>
             <span>Feast (5)</span>
@@ -27,6 +27,31 @@
     const range = document.getElementById('taskRange');
     const label = document.getElementById('task-label');
     const btn = document.getElementById('cook-btn');
+    const container = document.getElementById('start-container');
+
+    // Init: Check thinking type to set background
+    async function initBackground() {
+        try {
+            const res = await fetch('/api/check_auth/');
+            const data = await res.json();
+            
+            if (data.is_authenticated && data.thinking_type) {
+                if (data.thinking_type === 'convergent') {
+                    container.classList.add('start-bg-red');
+                } else {
+                    container.classList.add('start-bg-clear');
+                }
+            } else {
+                // Default fallback
+                container.classList.add('start-bg-clear');
+            }
+        } catch (err) {
+            console.error('Failed to load user preference', err);
+            container.classList.add('start-bg-clear');
+        }
+    }
+    
+    initBackground();
 
     const labels = {
         1: "1 Task (Light Snack)",
@@ -37,12 +62,24 @@
     };
 
     range.addEventListener('input', () => {
-        label.textContent = labels[range.value];
+        // Smooth transition for label update
+        const val = Math.round(range.value);
+        
+        // Only update label if the integer value changes to avoid flickering
+        if (label.dataset.lastVal != val) {
+            label.style.opacity = '0.5';
+            setTimeout(() => {
+                label.textContent = labels[val];
+                label.style.opacity = '1';
+            }, 100);
+            label.dataset.lastVal = val;
+        }
+        
         // Piggy nod logic could go here
     });
 
     btn.addEventListener('click', async () => {
-        const count = range.value;
+        const count = Math.round(range.value); // Ensure integer
         
         // Animation
         btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Chopping...';

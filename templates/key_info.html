@@ -3,7 +3,7 @@
 {% block content %}
 <div class="d-flex flex-column h-100 min-vh-100">
     <!-- Graph Section (60%) -->
-    <div class="flex-grow-1 position-relative" style="height: 60vh; background: #DEB887; overflow: hidden;">
+    <div id="graph-container" class="flex-grow-1 position-relative" style="height: 60vh; overflow: hidden;">
         <div id="mynetwork" class="w-100 h-100"></div>
         <!-- Piggy Hint -->
         <div class="position-absolute top-0 start-0 m-3 p-2 bg-white rounded shadow text-small" style="max-width: 200px;">
@@ -32,7 +32,17 @@
             const data = await res.json();
             
             if (data.status === 'success') {
-                renderGraph(data.graph);
+                // Apply background based on thinking type
+                const graphContainer = document.getElementById('graph-container');
+                graphContainer.classList.remove('bg-soup-clear', 'bg-soup-red');
+                
+                if (data.thinking_type === 'convergent') {
+                    graphContainer.classList.add('bg-soup-red');
+                } else {
+                    graphContainer.classList.add('bg-soup-clear');
+                }
+
+                renderGraph(data.graph, data.thinking_type);
                 renderTasks(data.tasks);
             } else {
                 alert("Failed to load data: " + data.message);
@@ -44,10 +54,8 @@
         }
     });
 
-    function renderGraph(graphData) {
+    function renderGraph(graphData, thinkingType) {
         const container = document.getElementById('mynetwork');
-        // Convert mock data to vis format
-        // Mock data structure: {nodes: [{id: 1, label: 'X', ...}], edges: [{from: 1, to: 2}]}
         
         const nodes = new vis.DataSet(graphData.nodes);
         const edges = new vis.DataSet(graphData.edges);
@@ -55,27 +63,101 @@
         const data = { nodes, edges };
         const options = {
             nodes: {
-                shape: 'dot',
-                size: 20,
-                font: { size: 16 }
+                shape: 'box',
+                margin: 10,
+                widthConstraint: { maximum: 200 },
+                font: { size: 18, face: 'arial', multi: true },
+                color: {
+                    background: '#FFD54F',
+                    border: '#FFA000',
+                    highlight: { background: '#FFE082', border: '#FF6F00' }
+                },
+                shadow: true
             },
             edges: {
                 color: '#8D6E63',
-                width: 2
+                width: 2,
+                smooth: {
+                    type: thinkingType === 'convergent' ? 'cubicBezier' : 'continuous',
+                    forceDirection: thinkingType === 'convergent' ? 'vertical' : 'none',
+                    roundness: 0.4
+                }
+            },
+            layout: {
+                hierarchical: {
+                    enabled: thinkingType === 'convergent',
+                    direction: 'UD',
+                    sortMethod: 'directed',
+                    nodeSpacing: 250,
+                    levelSeparation: 150
+                }
             },
             physics: {
-                enabled: true
+                enabled: thinkingType === 'divergent', // Enable physics for network graph
+                barnesHut: {
+                    gravitationalConstant: -2000,
+                    centralGravity: 0.3,
+                    springLength: 150
+                }
+            },
+            interaction: {
+                dragNodes: true,
+                dragView: true,
+                zoomView: true
             }
         };
         
         const network = new vis.Network(container, data, options);
         
-        network.on("click", function (params) {
+        // --- Folding/Unfolding Logic ---
+        network.on("selectNode", function (params) {
+            // Using 'selectNode' event is safer than 'click' for interaction handling
             if (params.nodes.length > 0) {
-                // Highlight logic (Visual only for now)
-                console.log("Clicked node:", params.nodes[0]);
+                const nodeId = params.nodes[0];
+                
+                // Get connected nodes (children)
+                const connectedNodes = network.getConnectedNodes(nodeId, 'to'); 
+                
+                if (connectedNodes.length > 0) {
+                    // Check if children are currently visible
+                    const firstChild = connectedNodes[0];
+                    const isVisible = !nodes.get(firstChild).hidden;
+                    
+                    // Toggle visibility
+                    toggleChildren(nodeId, !isVisible);
+                } else {
+                    // Leaf node clicked: just zoom to it
+                    network.focus(nodeId, {
+                        animation: { duration: 500, easingFunction: 'easeInOutQuad' },
+                        scale: 1.2
+                    });
+                }
             }
         });
+        // -------------------------------
+
+        function toggleChildren(parentId, show, visited = new Set()) {
+            // Prevent infinite loops in mesh networks
+            if (visited.has(parentId)) return;
+            visited.add(parentId);
+
+            const children = network.getConnectedNodes(parentId, 'to');
+            
+            children.forEach(childId => {
+                // Update node visibility
+                nodes.update({id: childId, hidden: !show});
+                
+                // If hiding, recursively hide grandchildren
+                // If showing, we stay at direct children for a "step-by-step" expand feel
+                if (!show) {
+                    toggleChildren(childId, false, visited);
+                }
+            });
+            
+            // Adjust layout after visibility change
+            // network.fit({ animation: { duration: 500, easingFunction: 'easeInOutQuad' } });
+        }
+        // -------------------------------
     }
 
     function renderTasks(tasks) {

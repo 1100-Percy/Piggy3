@@ -52,6 +52,57 @@ body {
     object-fit: contain;
 }
 
+/* Custom Slider Styling */
+.custom-range {
+    -webkit-appearance: none; /* Remove default styling */
+    width: 100%;
+    background: transparent; /* Track handles background */
+}
+
+.custom-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 36px;
+    height: 36px;
+    background-color: transparent;
+    /* Triangle Cheese SVG - Flat Style */
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23FFC107" stroke="%235D4037" stroke-width="1.5" stroke-linejoin="round"><path d="M12 3 L22 21 H2 L12 3 Z" /><circle cx="12" cy="12" r="1.5" fill="%235D4037" opacity="0.6"/><circle cx="9" cy="17" r="1" fill="%235D4037" opacity="0.6"/><circle cx="15" cy="18" r="1.2" fill="%235D4037" opacity="0.6"/></svg>');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    border: none;
+    cursor: grab;
+    /* Simple flat shadow */
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.2)); 
+    transition: transform 0.2s ease;
+    margin-top: -14px;
+}
+
+.custom-range::-webkit-slider-thumb:active {
+    transform: scale(1.1);
+    cursor: grabbing;
+}
+
+.custom-range::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 10px;
+    cursor: pointer;
+    
+    /* Flat Ginger Yellow - No Glass Effect */
+    background: #E6C55C; /* Ginger Yellow */
+    
+    border-radius: 20px;
+    border: none;
+    box-shadow: none; /* Removed all glass shadows */
+    
+    transition: background-color 0.3s ease;
+}
+
+.custom-range:hover::-webkit-slider-runnable-track {
+    background: #D4B24B; /* Slightly darker on hover */
+    box-shadow: none;
+}
+
 /* Animations */
 .fade-in {
     animation: fadeIn 0.5s ease-in;
@@ -77,4 +128,48 @@ body {
     background-image: linear-gradient(rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.8)), url('https://placehold.co/600x800/EEE/CCC?text=Kitchen+Background'); /* Placeholder for Kitchen BG */
     background-size: cover;
     background-position: center;
+}
+
+/* Start Page Specific Backgrounds */
+.start-bg-clear {
+    background-color: #f0e6d2; /* Fallback */
+    background: radial-gradient(circle, #ffffff 0%, #f0e6d2 100%) !important;
+    background-size: cover;
+    background-position: center;
+}
+
+.start-bg-red {
+    background-color: #ff7043; /* Fallback */
+    background-image: url('../image/red_soup_bg.png') !important;
+    background-size: 400px !important; /* Adjust pattern size */
+    background-repeat: repeat !important;
+    position: relative;
+    z-index: 0;
+}
+
+/* Pseudo-element for filter effect on red soup background */
+.start-bg-red::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.4); /* Stronger white overlay */
+    backdrop-filter: saturate(80%) contrast(40%) brightness(140%); /* Lower saturation and contrast */
+    z-index: -1;
+}
+
+/* Ensure content sits above the background pseudo-element */
+.start-bg-red > * {
+    position: relative;
+    z-index: 1;
+}
+
+/* Re-add Key Info backgrounds if needed, or use shared classes */
+.bg-soup-clear {
+    background: radial-gradient(circle, #ffffff 0%, #f0e6d2 100%) !important;
+}
+.bg-soup-red {
+    background: radial-gradient(circle, #ffccbc 0%, #ff7043 100%) !important;
 }

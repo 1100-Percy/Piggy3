@@ -15,11 +15,11 @@
         </div>
     </div>
 
-    <input type="file" id="file-input" class="d-none" accept=".pdf,.docx,.txt">
+    <input type="file" id="file-input" class="d-none" accept=".pdf,.docx,.txt" multiple>
     <button id="upload-btn" class="btn btn-primary btn-lg px-5 py-3 shadow-lg">
-        Upload Course Outline
+        Upload Course Outline(s)
     </button>
-    <p class="mt-3 text-muted">Supports PDF, Word, TXT</p>
+    <p class="mt-3 text-muted">Supports multiple files (PDF, Word, TXT)</p>
 </div>
 
 <script>
@@ -31,37 +31,49 @@
 
     fileInput.addEventListener('change', async () => {
         if (fileInput.files.length > 0) {
-            const file = fileInput.files[0];
-            const formData = new FormData();
-            formData.append('file', file);
-
             // Animation
             steam.style.opacity = 1;
             uploadBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Cooking...';
             uploadBtn.disabled = true;
 
-            try {
-                const res = await fetch('/api/upload_course/', {
-                    method: 'POST',
-                    body: formData
-                });
-                const result = await res.json();
-                
-                if (result.status === 'success') {
-                    setTimeout(() => {
-                        window.location.href = '/select/';
-                    }, 1500);
-                } else {
-                    alert("Upload failed: " + result.message);
-                    uploadBtn.innerHTML = 'Upload Course Outline';
-                    uploadBtn.disabled = false;
-                    steam.style.opacity = 0;
+            const files = Array.from(fileInput.files);
+            let successCount = 0;
+            let errorMsg = "";
+
+            for (const file of files) {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    const res = await fetch('/api/upload_course/', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const result = await res.json();
+                    
+                    if (result.status === 'success') {
+                        successCount++;
+                    } else {
+                        errorMsg += `\n${file.name}: ${result.message}`;
+                    }
+                } catch (err) {
+                    console.error(err);
+                    errorMsg += `\n${file.name}: Network Error`;
                 }
-            } catch (err) {
-                console.error(err);
-                alert("Network Error");
-                uploadBtn.innerHTML = 'Upload Course Outline';
+            }
+
+            if (successCount > 0) {
+                // If at least one file uploaded, proceed
+                if (errorMsg) alert("Some files failed:" + errorMsg);
+                
+                setTimeout(() => {
+                    window.location.href = '/select/';
+                }, 1500);
+            } else {
+                alert("All uploads failed:" + errorMsg);
+                uploadBtn.innerHTML = 'Upload Course Outline(s)';
                 uploadBtn.disabled = false;
+                steam.style.opacity = 0;
             }
         }
     });
