@@ -45,6 +45,13 @@ body {
     transform: scale(1.1);
 }
 
+/* Custom Piggy Image */
+.custom-piggy-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
 /* Animations */
 .fade-in {
     animation: fadeIn 0.5s ease-in;

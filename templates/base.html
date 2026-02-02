@@ -14,8 +14,10 @@
 <body class="bg-light">
     <!-- Piggy Avatar (Fixed Top Right) -->
     <div id="piggy-avatar" class="position-fixed top-0 end-0 p-3" style="z-index: 1050; cursor: pointer; display: none;"> <!-- Hidden by default, shown in inner pages -->
-        <div class="piggy-icon rounded-circle bg-white shadow d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; font-size: 30px;">
-            🐷
+        <!-- 替换后的小猪头像容器（仅修改piggy-icon内部内容） -->
+        <div class="piggy-icon bg-white shadow d-flex align-items-center justify-content-center rounded" style="width: 50px; height: 50px;">
+            <!-- 核心：img标签引入自定义PNG，添加专属class方便样式控制 -->
+            <img src="/static/image/lulu1.GIF" class="custom-piggy-img" alt="Piggy Chef">
         </div>
     </div>
 
