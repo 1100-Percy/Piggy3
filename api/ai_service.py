@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 # Load env in service as well to be safe, though settings loads it
 load_dotenv()
 
-# DEEPSEEK_API_KEY = "sk-7cc5ef44d8b4414ab24e6f9e13e82182" 
+# DEEPSEEK_API_KEY = "sk-***" 
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 
 DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions"
