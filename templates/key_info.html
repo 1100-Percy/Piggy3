@@ -57,6 +57,15 @@
     function renderGraph(graphData, thinkingType) {
         const container = document.getElementById('mynetwork');
         
+        // Safety check for hierarchical layout: ensure all nodes have a level
+        if (thinkingType === 'convergent') {
+            graphData.nodes.forEach(node => {
+                if (node.level === undefined) {
+                    node.level = 1; // Default level if missing
+                }
+            });
+        }
+        
         const nodes = new vis.DataSet(graphData.nodes);
         const edges = new vis.DataSet(graphData.edges);
         

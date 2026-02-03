@@ -12,6 +12,7 @@ class Course(Document):
     name = StringField(required=True)
     icon = StringField(default="dumpling") # dumpling, ramen, etc.
     outline_text = StringField()
+    refined_text = StringField() # 精华提取后的 Markdown 内容
     extracted_concepts = ListField(StringField()) # AI-extracted key concepts for cross-linking
     owner = ReferenceField(Student)
     created_at = DateTimeField(default=datetime.datetime.utcnow)

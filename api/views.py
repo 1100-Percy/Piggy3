@@ -6,9 +6,10 @@ from .models import Student, Course, Graph, Task
 import json
 from pypdf import PdfReader
 from docx import Document as DocxDocument
+from pptx import Presentation
 import io
 import datetime
-from .ai_service import extract_course_structure, generate_smart_tasks, find_cross_connections
+from .ai_service import extract_course_structure, generate_smart_tasks, find_cross_connections, refine_syllabus_with_doubao
 
 @csrf_exempt
 def upload_course_view(request):
@@ -37,6 +38,16 @@ def upload_course_view(request):
                         text_content += para.text + "\n"
                 except:
                     text_content = "Docx Parsing Failed"
+            elif file_name.endswith('.pptx'):
+                try:
+                    prs = Presentation(io.BytesIO(file_content))
+                    for slide in prs.slides:
+                        for shape in slide.shapes:
+                            if hasattr(shape, "text"):
+                                text_content += shape.text + "\n"
+                except Exception as e:
+                    print(f"PPTX Parsing Error: {e}")
+                    text_content = "PPTX Parsing Failed"
             else:
                 text_content = file_content.decode('utf-8', errors='ignore')
 
@@ -45,11 +56,14 @@ def upload_course_view(request):
             
             student = Student.objects.get(username=request.user.username)
             
-            # Store text for AI analysis (limit to 50k chars for potential future needs)
-            # BUT: AI extraction will use stored outline_text
+            # --- 🚀 NEW: Doubao Refinement Pipeline ---
+            print(f"DEBUG: Starting Doubao refinement for {file_name}")
+            refined_content = refine_syllabus_with_doubao(text_content)
+            
             course = Course(
                 name=file_name.split('.')[0],
-                outline_text=text_content[:5000], # Keep initial storage small as requested
+                outline_text=text_content[:15000], 
+                refined_text=refined_content,
                 owner=student,
                 icon="dumpling"
             )
@@ -96,9 +110,15 @@ def generate_tasks_view(request):
                 return JsonResponse({'status': 'error', 'message': 'No course found'})
             
             # 1. AI Analysis (Structure Extraction)
-            print(f"Generating tasks for course: {course.name}")
-            ai_data = extract_course_structure(course.outline_text, student.thinking_type)
-            print(f"AI Data Received: {bool(ai_data)}")
+            print(f"DEBUG: Starting task generation for: {course.name}")
+            print(f"DEBUG: Thinking Type: {student.thinking_type}")
+            
+            # Use refined text if available, otherwise fallback to raw text
+            analysis_source = course.refined_text if course.refined_text else course.outline_text
+            print(f"DEBUG: Using {'REFINED' if course.refined_text else 'RAW'} text for analysis")
+            
+            ai_data = extract_course_structure(analysis_source, student.thinking_type)
+            print(f"DEBUG: AI Data Received: {bool(ai_data)}")
             
             nodes = []
             edges = []
@@ -106,10 +126,12 @@ def generate_tasks_view(request):
             
             if ai_data:
                 # Use AI Data
-                print("Processing AI Data...")
+                print("DEBUG: Processing AI Data...")
                 raw_nodes = ai_data.get('nodes', [])
                 raw_edges = ai_data.get('edges', [])
                 concepts = ai_data.get('concepts', [])
+                
+                print(f"DEBUG: Found {len(raw_nodes)} nodes and {len(raw_edges)} edges")
                 
                 # Ensure all IDs are strings to prevent Vis.js mismatch
                 for n in raw_nodes:
@@ -131,7 +153,9 @@ def generate_tasks_view(request):
                 others_data = [{'name': c.name, 'concepts': c.extracted_concepts} for c in other_courses if c.extracted_concepts]
                 
                 if others_data:
+                    print(f"DEBUG: Checking cross-connections with {len(others_data)} other courses")
                     cross_links = find_cross_connections(course.name, concepts, others_data)
+                    print(f"DEBUG: Found {len(cross_links)} cross links")
                     
                     # Add cross-links to graph
                     for link in cross_links:
@@ -142,6 +166,7 @@ def generate_tasks_view(request):
                             'label': f"{link['to_concept']} ({link['to_course']})",
                             'shape': 'diamond', # Different shape for external
                             'color': '#81D4FA', # Blue for external
+                            'level': 2, # Default level for hierarchical layout
                             'title': f"From course: {link['to_course']}\nReason: {link.get('reason', '')}"
                         })
                         
@@ -162,19 +187,25 @@ def generate_tasks_view(request):
                             })
 
                 # 3. AI Task Generation
+                print("DEBUG: Generating smart tasks...")
                 ai_tasks = generate_smart_tasks(course.name, nodes, count)
                 if ai_tasks and 'tasks' in ai_tasks:
                     tasks_content = ai_tasks['tasks']
+                    print(f"DEBUG: Generated {len(tasks_content)} tasks")
+            else:
+                print("DEBUG: AI Data was None, falling back to mock data.")
             
             # Fallback if AI fails or returns empty
             if not tasks_content:
+                print("DEBUG: Falling back to mock tasks.")
                 tasks_content = [f"Cook {course.name} - Step {i+1}" for i in range(count)]
             
             if not nodes:
+                print("DEBUG: Falling back to mock nodes/edges.")
                 nodes = [
-                    {'id': '1', 'label': course.name, 'shape': 'box', 'color': '#FFD54F'},
-                    {'id': '2', 'label': 'Preparation', 'shape': 'dot', 'color': '#FFAB91'},
-                    {'id': '3', 'label': 'Core Ingredients', 'shape': 'dot', 'color': '#FFAB91'},
+                    {'id': '1', 'label': course.name, 'shape': 'box', 'color': '#FFD54F', 'level': 0},
+                    {'id': '2', 'label': 'Preparation', 'shape': 'dot', 'color': '#FFAB91', 'level': 1},
+                    {'id': '3', 'label': 'Core Ingredients', 'shape': 'dot', 'color': '#FFAB91', 'level': 1},
                 ]
                 edges = [{'from': '1', 'to': '2'}, {'from': '1', 'to': '3'}]
 
